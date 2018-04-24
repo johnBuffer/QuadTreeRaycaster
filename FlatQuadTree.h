@@ -45,6 +45,24 @@ struct QuadElement
 	bool is_empty;
 };
 
+struct QuadContext
+{
+	QuadContext() = default;
+
+	QuadContext(int idx, int scl, int sb_idx, int px, int py) :
+		index(idx),
+		scale(scl),
+		sub_index(sb_idx),
+		x(px),
+		y(py)
+	{}
+	
+	int index;
+	int scale;
+	int sub_index;
+	int x, y;
+};
+
 class FlatQuadTree
 {
 public:
@@ -53,7 +71,7 @@ public:
 
 	void draw(sf::RenderTarget* render_target) const;
 
-	HitPoint2D castRay(const glm::vec2& start, const glm::vec2& ray);
+	HitPoint2D castRay(const glm::vec2& start, const glm::vec2& ray_vector);
 
 	void addElement(int x, int y);
 
@@ -61,6 +79,8 @@ private:
 	int m_min_size;
 	int m_size;
 	std::vector<QuadElement> m_elements;
+
+	QuadContext getCurrentContext(int x, int y) const;
 
 	void draw_element(sf::RenderTarget* render_target, int index, float x_start, float y_start, float size) const;
 };
