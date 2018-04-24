@@ -15,6 +15,37 @@ void FlatQuadTree::draw(sf::RenderTarget* render_target) const
 
 HitPoint2D FlatQuadTree::castRay(const glm::vec2& start, const glm::vec2& ray)
 {
+	// Initialization
+	// We assume we have a ray vector:
+	// vec = start + t*v
+
+	// cell_x and cell_y are the starting voxel's coordinates
+	int cell_x = start.x / m_cell_size;
+	int cell_y = start.y / m_cell_size;
+	int cell_z = start.z / m_cell_size;
+
+	// step_x and step_y describe if cell_x and cell_y
+	// are incremented or decremented during iterations
+	int step_x = ray_vector.x<0 ? -1 : 1;
+	int step_y = ray_vector.y<0 ? -1 : 1;
+	int step_z = ray_vector.z<0 ? -1 : 1;
+
+	// Compute the value of t for first intersection in x and y
+	int dir_x = step_x > 0 ? 1 : 0;
+	float t_max_x = ((cell_x + dir_x)*m_cell_size - start.x) / ray_vector.x;
+
+	int dir_y = step_y > 0 ? 1 : 0;
+	float t_max_y = ((cell_y + dir_y)*m_cell_size - start.y) / ray_vector.y;
+
+	int dir_z = step_z > 0 ? 1 : 0;
+	float t_max_z = ((cell_z + dir_z)*m_cell_size - start.z) / ray_vector.z;
+
+	// Compute how much (in units of t) we can move along the ray
+	// before reaching the cell's width and height
+	float t_dx = std::abs(float(m_cell_size) / ray_vector.x);
+	float t_dy = std::abs(float(m_cell_size) / ray_vector.y);
+	float t_dz = std::abs(float(m_cell_size) / ray_vector.z);
+
 	return HitPoint2D();
 }
 
