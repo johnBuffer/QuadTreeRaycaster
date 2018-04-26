@@ -54,7 +54,9 @@ struct QuadContext
 		scale(scl),
 		sub_index(sb_idx),
 		x(px),
-		y(py)
+		y(py),
+		current_x(px),
+		current_y(py)
 	{}
 
 	int getCurrentSub(int px, int py)
@@ -68,7 +70,7 @@ struct QuadContext
 	int index;
 	int scale;
 	int sub_index;
-	int x, y;
+	int x, y, current_x, current_y;
 	int abs_x, abs_y;
 
 	float t_max_x, t_max_y, t_max_min;
@@ -81,6 +83,7 @@ public:
 	FlatQuadTree();
 	~FlatQuadTree() = default;
 
+	void print();
 	void draw(sf::RenderTarget* render_target) const;
 
 	std::vector<HitPoint2D> castRay(const glm::vec2& start, const glm::vec2& ray_vector);
@@ -99,5 +102,6 @@ private:
 	std::vector<QuadContext> getCurrentContext(int x, int y) const;
 	QuadContext updateContext(int x, int y, QuadContext& current_context);
 
+	void print_element(int index, const std::string& indent) const;
 	void draw_element(sf::RenderTarget* render_target, int index, float x_start, float y_start, float size) const;
 };

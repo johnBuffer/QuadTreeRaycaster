@@ -12,6 +12,11 @@ FlatQuadTree::FlatQuadTree() :
 	m_font.loadFromFile("font.ttf");
 }
 
+void FlatQuadTree::print()
+{
+	print_element(0, "");
+}
+
 void FlatQuadTree::draw(sf::RenderTarget* render_target) const
 {
 	draw_element(render_target, 0, 0, 0, m_size);
@@ -43,6 +48,7 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 	QuadContext& root_context = stack.back();
 	root_context.abs_x = start.x;
 	root_context.abs_y = start.y;
+	root_context.t_max_min = 0;
 
 	root_context.sub_index = root_context.getCurrentSub(root_context.x, root_context.y);
 
@@ -99,12 +105,16 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 				context.t_max_y += context.t_dy;
 			}
 
-			//std::cout << "Hit, new rel coords: " << context.x + context.t_max_min*ray_vector.x << " " << context.y + context.t_max_min*ray_vector.y << std::endl;
+			context.current_x = context.x + context.t_max_min*ray_vector.x;
+			context.current_y = context.y + context.t_max_min*ray_vector.y;
+
+			std::cout << "Hit, new rel coords: " << context.x + context.t_max_min*ray_vector.x << " " << context.y + context.t_max_min*ray_vector.y << std::endl;
 			//std::cout << "New t_max coords: " << context.t_max_x << " " << context.t_max_y << std::endl;
 
 			float hit_abs_x = context.abs_x + context.t_max_min*ray_vector.x;
 			float hit_abs_y = context.abs_y + context.t_max_min*ray_vector.y;
 
+			std::cout << "Hit, new abs coords: " << hit_abs_x << " " << hit_abs_y << std::endl;
 			result.emplace_back(hit_abs_x, hit_abs_y, false);
 
 			if (sub_x_coord > -1 && sub_x_coord < 2 && sub_y_coord > -1 && sub_y_coord < 2)
@@ -147,28 +157,31 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 				new_context.index = new_index;
 				new_context.scale = current_size / 2;
 
-				new_context.x = context.x + context.t_max_min*ray_vector.x;
-				new_context.y = context.y + context.t_max_min*ray_vector.y;
+				new_context.x = context.current_x;
+				new_context.y = context.current_y;
 
 				// Translating relative coords into sub context
 				if (sub_index == 1)
 				{
-					//std::cout << "Translating x part: " << context.x << " " << context.y << std::endl;
+					std::cout << "Translating x part: " << context.current_x << " " << context.current_y << std::endl;
 					new_context.x -= current_size;
 				}
 				else if (sub_index == 2)
 				{
-					//std::cout << "Translating y part: " << context.x << " " << context.y << std::endl;
+					std::cout << "Translating y part: " << context.current_x << " " << context.current_y << std::endl;
 					new_context.y -= current_size;
 				}
 				else if (sub_index == 3)
 				{
-					//std::cout << "Translating both part: " << context.x << " " << context.y << std::endl;
+					std::cout << "Translating both part: " << context.current_x << " " << context.current_y << std::endl;
 					new_context.x -= current_size;
 					new_context.y -= current_size;
 				}
 
-				//std::cout << "Rel coords: " << new_context.x << " " << new_context.y << std::endl;
+				new_context.current_x = new_context.x;
+				new_context.current_y = new_context.y;
+
+				std::cout << "Rel coords: " << new_context.x << " " << new_context.y << std::endl;
 
 				// Initializing sub raycast parameters
 				new_context.abs_x = context.abs_x + context.t_max_min*ray_vector.x;
@@ -176,7 +189,7 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 				//std::cout << "Abs coords: " << new_context.abs_x << " " << new_context.abs_y << std::endl;
 
 				new_context.sub_index = new_context.getCurrentSub(new_context.x, new_context.y);
-				//std::cout << "New sub: " << new_context.sub_index << " scale: " << new_context.scale << std::endl;
+				std::cout << "New sub: " << new_context.sub_index << " scale: " << new_context.scale << std::endl;
 
 				// Compute how much (in units of t) we can move along the ray
 				// before reaching the cell's width and height
@@ -210,9 +223,18 @@ void FlatQuadTree::addElement(int x, int y)
 
 	while (current_size >= m_min_size)
 	{
-		current_size >>= 1;
-		int sub_index = -1;
-		if (current_x < current_size)
+		current_size /= 2;
+
+		int sub_x = current_x / current_size;
+		int sub_y = current_y / current_size;
+		int sub_index = sub_x + 2*sub_y;
+
+		if (sub_x > 0)
+			current_x -= current_size;
+		if (sub_y > 0)
+			current_y -= current_size;
+		
+		/*if (current_x < current_size)
 		{
 			if (current_y < current_size)
 			{
@@ -236,7 +258,7 @@ void FlatQuadTree::addElement(int x, int y)
 				current_y -= current_size;
 				sub_index = 3;
 			}
-		}
+		}*/
 
 		if (m_elements[current_index].subs[sub_index] == -1)
 		{
@@ -271,7 +293,7 @@ void FlatQuadTree::printStack(const std::list<QuadContext>& stack) const
 {
 	for (const QuadContext& qc : stack)
 	{
-		std::cout << "Index: " << qc.index << "(size: " << qc.scale << "), Sub_index: " << qc.sub_index << std::endl;
+		std::cout << "Index: " << qc.index << " (size: " << qc.scale << "), Sub_index: " << qc.sub_index << std::endl;
 	}
 }
 
@@ -377,6 +399,22 @@ QuadContext FlatQuadTree::updateContext(int x, int y, QuadContext& current_conte
 	sub_context.y = py;
 
 	return sub_context;
+}
+
+void FlatQuadTree::print_element(int index, const std::string& indent) const
+{
+	const QuadElement& elem = m_elements[index];
+
+	std::cout << indent << "ID: " << index << std::endl;
+	for (int i(0); i < 4; ++i)
+	{
+		int sub_idx = elem.subs[i];
+		if (sub_idx != -1)
+		{
+			std::cout << indent << "sub " << i << ": " << sub_idx << std::endl;
+			print_element(sub_idx, indent + "    ");
+		}
+	}
 }
 
 void FlatQuadTree::draw_element(sf::RenderTarget* render_target, int index, float x_start, float y_start, float size) const

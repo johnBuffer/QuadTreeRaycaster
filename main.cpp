@@ -36,6 +36,7 @@ int main()
 				if (event.mouseButton.button == sf::Mouse::Right)
 				{
 					qt.addElement(local_position.x, local_position.y);
+					qt.print();
 
 					hit_points = qt.castRay(start_point, ray);
 					std::cout << "Hit points found: " << hit_points.size() << std::endl;
