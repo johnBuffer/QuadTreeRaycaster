@@ -35,17 +35,27 @@ int main()
 			{
 				if (event.mouseButton.button == sf::Mouse::Right)
 				{
+					mouseButtonPressed = false;
 					qt.addElement(local_position.x, local_position.y);
-					qt.print();
+					//qt.print();
 
 					hit_points = qt.castRay(start_point, ray);
 					std::cout << "Hit points found: " << hit_points.size() << std::endl;
 				}
 				else
 				{
-
+					mouseButtonPressed = true;
 				}
 			}
+			else if (event.type == sf::Event::MouseButtonReleased)
+			{
+				mouseButtonPressed = false;
+			}
+		}
+
+		if (mouseButtonPressed)
+		{
+			qt.addElement(local_position.x, local_position.y);
 		}
 
 		sf::VertexArray ray_va(sf::Lines, 2);
