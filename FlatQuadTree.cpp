@@ -1,11 +1,15 @@
 #include "FlatQuadTree.h"
 #include <iostream>
+#include <sstream>
+#include <list>
 
 FlatQuadTree::FlatQuadTree() :
 	m_size(1024),
-	m_min_size(16)
+	m_min_size(64)
 {
 	m_elements.emplace_back(0);
+
+	m_font.loadFromFile("font.ttf");
 }
 
 void FlatQuadTree::draw(sf::RenderTarget* render_target) const
@@ -20,136 +24,174 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 	if (m_elements.empty())
 		return result;
 
-	// Initialization
 	// We assume we have a ray vector:
 	// vec = start + t*v
+	
+	// Initialization of global parameters
 	float inv_ray_x = 1 / ray_vector.x;
 	float inv_ray_y = 1 / ray_vector.y;
-
-	std::vector<QuadContext> stack(0);
-	stack.emplace_back(0, m_size, 0, start.x, start.y);
-	QuadContext& root_context = stack.back();
-	root_context.abs_x = start.x;
-	root_context.abs_y = start.y;
 
 	int step_x = ray_vector.x > 0 ? 1 : -1;
 	int step_y = ray_vector.y > 0 ? 1 : -1;
 
-	// Compute the value of t for first intersection in x and y
 	int dir_x = step_x > 0 ? 1 : 0;
 	int dir_y = step_y > 0 ? 1 : 0;
 
+	std::list<QuadContext> stack(0);
+	// index, sub_size, start.x, start.y
+	stack.emplace_back(0, m_size/2, 0, start.x, start.y);
+	QuadContext& root_context = stack.back();
+	root_context.abs_x = start.x;
+	root_context.abs_y = start.y;
+
+	root_context.sub_index = root_context.getCurrentSub(root_context.x, root_context.y);
+
 	// Compute how much (in units of t) we can move along the ray
 	// before reaching the cell's width and height
-	root_context.t_dx = std::abs(float(m_size/2) * inv_ray_x);
-	root_context.t_dy = std::abs(float(m_size/2) * inv_ray_y);
+	root_context.t_dx = std::abs(root_context.scale * inv_ray_x);
+	root_context.t_dy = std::abs(root_context.scale * inv_ray_y);
 
-	root_context.t_max_x = ((dir_x)*m_size/2 - root_context.x) * inv_ray_x;
-	root_context.t_max_y = ((dir_y)*m_size/2 - root_context.y) * inv_ray_y;
+	// Compute the value of t for first intersection in x and y
+	root_context.t_max_x = (dir_x*root_context.scale - root_context.x) * inv_ray_x;
+	root_context.t_max_y = (dir_y*root_context.scale - root_context.y) * inv_ray_y;
 
 	// Probable condition: hit or stack.is_empty()
 	while (true)
 	{
+		printStack(stack);
 		// Current context (location, index, sub_index, ...)
 		QuadContext& context = stack.back();
+		const QuadElement& current_elem = m_elements[context.index];
 		int current_x = context.x;
 		int current_y = context.y;
+		int sub_index = context.sub_index;
+		int current_size = context.scale;
 
-		// Check for nested voxels
-		QuadContext sub_context = updateContext(current_x, current_y, context);
-		int current_size = sub_context.scale;
+		//std::cout << "In " << context.index << std::endl;
 
-		/*std::cout << "Parent index: " << context.index << std::endl;
-		std::cout << "Parent sub: " << context.sub_index << std::endl;
-		std::cout << "Current index: " << sub_context.index << std::endl;
-		std::cout << "At sub: " << sub_context.sub_index << " pos: [" << sub_context.x << ", " << sub_context.y << "]" << std::endl;*/
-
-		printStack(stack);
-
-		// Empty sub ?
-		if (sub_context.index == context.index)
+		// If current sub empty -> move to next one
+		if (current_elem.subs[sub_index] == -1 || context.advance)
 		{
-			std::cout << context.index << " sub_index " << context.sub_index << " is empty, moving..." << std::endl;
-
-			// Move one the next context's sub
-			float t_max_x = ((dir_x)*current_size - sub_context.x) * inv_ray_x;
-			float t_max_y = ((dir_y)*current_size - sub_context.y) * inv_ray_y;
-
-			int min_type = 0;
-			float t_max_min = 0;
-			if (t_max_x < t_max_y)
+			if (context.advance)
 			{
-				min_type = step_x;
-				t_max_min = t_max_x;
+				std::cout << "Sub " << context.sub_index << " in " << context.index << " already explored, skipping " << std::endl;
+				context.advance = false;
+			}
+			else
+			{
+				std::cout << "Sub " << context.sub_index << " in " << context.index << " is empty, skipping " << std::endl;
+			}
+
+			int sub_y_coord = context.sub_index / 2;
+			int sub_x_coord = context.sub_index - 2*sub_y_coord;
+
+			context.t_max_min = 0;
+			if (context.t_max_x < context.t_max_y)
+			{
+				context.t_max_min = context.t_max_x;
+				sub_x_coord += step_x;
 				context.t_max_x += context.t_dx;
 			}
 			else
 			{
-				min_type = 2 * step_y;
-				t_max_min = t_max_y;
+				context.t_max_min = context.t_max_y;
+				sub_y_coord += step_y;
 				context.t_max_y += context.t_dy;
 			}
 
-			// Move on to the next sub
-			int next_sub = context.sub_index + min_type;
-			std::cout << "Empty, next sub: " << next_sub << " (min type: " << min_type << ")" << std::endl;
+			//std::cout << "Hit, new rel coords: " << context.x + context.t_max_min*ray_vector.x << " " << context.y + context.t_max_min*ray_vector.y << std::endl;
+			//std::cout << "New t_max coords: " << context.t_max_x << " " << context.t_max_y << std::endl;
 
-			context.abs_x += t_max_min * ray_vector.x;
-			context.abs_y += t_max_min * ray_vector.y;
+			float hit_abs_x = context.abs_x + context.t_max_min*ray_vector.x;
+			float hit_abs_y = context.abs_y + context.t_max_min*ray_vector.y;
 
-			result.emplace_back(context.abs_x, context.abs_y, true);
+			result.emplace_back(hit_abs_x, hit_abs_y, false);
 
-			if (next_sub > -1 && next_sub < 4)
+			if (sub_x_coord > -1 && sub_x_coord < 2 && sub_y_coord > -1 && sub_y_coord < 2)
 			{
-				context.sub_index = next_sub;
-				if (min_type == step_x)
-				{
-					context.x = 0;
-					context.y = current_y + t_max_min * ray_vector.y + 2;
-				}
-				else
-				{
-					context.x = current_x + t_max_min * ray_vector.x + 2;
-					context.y = 0;
-				}
+				context.sub_index = sub_x_coord + 2*sub_y_coord;
 			}
 			else
 			{
-				std::cout << "Exiting " << context.index << "..." << std::endl;
+				std::cout << "Exiting " << context.index << std::endl;
 				stack.pop_back();
-				
-				QuadContext& previous_context = stack.back();
-				int min_type = 0;
-				float t_max_min = 0;
-				if (previous_context.t_max_x < previous_context.t_max_y)
-				{
-					min_type = step_x;
-					t_max_min = previous_context.t_max_x;
-					previous_context.t_max_x += previous_context.t_dx;
-				}
-				else
-				{
-					min_type = 2 * step_y;
-					t_max_min = previous_context.t_max_y;
-					previous_context.t_max_y += previous_context.t_dy;
-				}
 
-				context.x += t_max_min * ray_vector.x;
-				context.y += t_max_min * ray_vector.y;
+				if (stack.empty())
+					break;
+				else
+					stack.back().advance = true;
 			}
 		}
-		// Not empty sub
+		// If not, go deeper
 		else
 		{
-			// Enter the sub voxel
-			stack.emplace_back(sub_context);
-			QuadContext& new_context = stack.back();
+			const QuadElement& sub_element = m_elements[current_elem.subs[sub_index]];
+			if (sub_element.is_leaf && !sub_element.is_empty)
+			{
+				int hit_abs_x = context.abs_x + context.t_max_min*ray_vector.x;
+				int hit_abs_y = context.abs_y + context.t_max_min*ray_vector.y;
 
-			new_context.t_dx = context.t_dx*0.5f;
-			new_context.t_dy = context.t_dy*0.5f;
+				result.emplace_back(hit_abs_x, hit_abs_y, true);
 
-			new_context.t_max_x = ((dir_x)*current_size/2 - new_context.x) * inv_ray_x;
-			new_context.t_max_y = ((dir_y)*current_size/2 - new_context.y) * inv_ray_y;
+				return result;
+			}
+			else
+			{
+				std::cout << "Sub " << context.sub_index << " in " << context.index << " has sub, entering " << current_elem.subs[sub_index] << std::endl;
+
+				// Adding sub context to the stack
+				int new_index = current_elem.subs[sub_index];
+
+				stack.emplace_back();
+				QuadContext& new_context = stack.back();
+				new_context.index = new_index;
+				new_context.scale = current_size / 2;
+
+				new_context.x = context.x + context.t_max_min*ray_vector.x;
+				new_context.y = context.y + context.t_max_min*ray_vector.y;
+
+				// Translating relative coords into sub context
+				if (sub_index == 1)
+				{
+					//std::cout << "Translating x part: " << context.x << " " << context.y << std::endl;
+					new_context.x -= current_size;
+				}
+				else if (sub_index == 2)
+				{
+					//std::cout << "Translating y part: " << context.x << " " << context.y << std::endl;
+					new_context.y -= current_size;
+				}
+				else if (sub_index == 3)
+				{
+					//std::cout << "Translating both part: " << context.x << " " << context.y << std::endl;
+					new_context.x -= current_size;
+					new_context.y -= current_size;
+				}
+
+				//std::cout << "Rel coords: " << new_context.x << " " << new_context.y << std::endl;
+
+				// Initializing sub raycast parameters
+				new_context.abs_x = context.abs_x + context.t_max_min*ray_vector.x;
+				new_context.abs_y = context.abs_y + context.t_max_min*ray_vector.y;
+				//std::cout << "Abs coords: " << new_context.abs_x << " " << new_context.abs_y << std::endl;
+
+				new_context.sub_index = new_context.getCurrentSub(new_context.x, new_context.y);
+				//std::cout << "New sub: " << new_context.sub_index << " scale: " << new_context.scale << std::endl;
+
+				// Compute how much (in units of t) we can move along the ray
+				// before reaching the cell's width and height
+				new_context.t_dx = context.t_dx * 0.5f;
+				new_context.t_dy = context.t_dy * 0.5f;
+
+				int sub_y_coord = new_context.sub_index / 2;
+				int sub_x_coord = new_context.sub_index - (sub_y_coord * 2);
+
+				// Compute the value of t for first intersection in x and y
+				new_context.t_max_x = ((dir_x + sub_x_coord)*new_context.scale - new_context.x) * inv_ray_x;
+				new_context.t_max_y = ((dir_y + sub_y_coord)*new_context.scale - new_context.y) * inv_ray_y;
+
+				//std::cout << "T_max coords: " << new_context.t_max_x << " " << new_context.t_max_y << std::endl;
+			}
 		}
 
 		std::cout << std::endl;
@@ -169,7 +211,6 @@ void FlatQuadTree::addElement(int x, int y)
 	while (current_size >= m_min_size)
 	{
 		current_size >>= 1;
-
 		int sub_index = -1;
 		if (current_x < current_size)
 		{
@@ -199,8 +240,8 @@ void FlatQuadTree::addElement(int x, int y)
 
 		if (m_elements[current_index].subs[sub_index] == -1)
 		{
-			std::cout << "Creating sub " << sub_index << " for " << current_index << std::endl;
 			int new_index = m_elements.size();
+			std::cout << "Creating sub " << sub_index << " for " << current_index << " (ID: " << new_index << ")" << std::endl;
 			m_elements[current_index].subs[sub_index] = new_index;
 			m_elements.emplace_back(new_index);
 			m_elements.back().parent = current_index;
@@ -217,6 +258,8 @@ void FlatQuadTree::addElement(int x, int y)
 
 	std::cout << std::endl;
 
+	std::cout << "===================== ADD =====================" << std::endl;
+
 	// Debug
 	/*std::cout << "Done, new size: " << m_elements.size() << std::endl;
 	int grid_size = (m_size / m_min_size)*(m_size / m_min_size);
@@ -224,7 +267,7 @@ void FlatQuadTree::addElement(int x, int y)
 	std::cout << "Spaced used: " << int(space_used * 100) << "%" << std::endl;*/
 }
 
-void FlatQuadTree::printStack(const std::vector<QuadContext>& stack) const
+void FlatQuadTree::printStack(const std::list<QuadContext>& stack) const
 {
 	for (const QuadContext& qc : stack)
 	{
@@ -341,6 +384,16 @@ void FlatQuadTree::draw_element(sf::RenderTarget* render_target, int index, floa
 	if (index == -1)
 		return;
 
+	sf::Text text;
+	text.setFont(m_font);
+	text.setColor(sf::Color::Red);
+	text.setCharacterSize(14);
+
+	std::stringstream sx;
+	sx << index;
+	text.setString(sx.str());
+	text.setPosition(x_start + size / 2.0f, y_start + size / 2.0f);
+
 	const QuadElement& elem = m_elements[index];
 	if (!elem.is_leaf)
 	{
@@ -377,4 +430,6 @@ void FlatQuadTree::draw_element(sf::RenderTarget* render_target, int index, floa
 
 		render_target->draw(va);
 	}
+
+	render_target->draw(text);
 }

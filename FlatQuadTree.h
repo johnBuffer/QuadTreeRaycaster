@@ -1,5 +1,6 @@
 #pragma once
 
+#include <list>
 #include <array>
 #include <vector>
 #include <glm/glm.hpp>
@@ -23,9 +24,7 @@ struct QuadElement
 	QuadElement() : parent(-1), is_leaf(true), is_empty(true)
 	{
 		for (int i(0); i<4; ++i)
-		{
 			subs[i] = -1;
-		}
 	}
 
 	QuadElement(int idx) : QuadElement()
@@ -50,6 +49,7 @@ struct QuadContext
 	QuadContext() = default;
 
 	QuadContext(int idx, int scl, int sb_idx, int px, int py) :
+		advance(false),
 		index(idx),
 		scale(scl),
 		sub_index(sb_idx),
@@ -59,27 +59,11 @@ struct QuadContext
 
 	int getCurrentSub(int px, int py)
 	{
-		int sub_index = 0;
-		int size = scale >> 1;
-		if (px < scale)
-		{
-			if (py < size)
-				sub_index = 0;
-			else
-				sub_index = 2;
-		}
-		else
-		{
-			px -= size;
-			if (py < size)
-				sub_index = 1;
-			else
-				sub_index = 3;
-		}
-
-		return sub_index;
+		// We could use euclidean division like: sub_index = px/scale + 2*py/scale
+		return px/scale + 2*(py/scale);
 	}
 	
+	bool advance;
 	int parent_index;
 	int index;
 	int scale;
@@ -87,7 +71,7 @@ struct QuadContext
 	int x, y;
 	int abs_x, abs_y;
 
-	float t_max_x, t_max_y;
+	float t_max_x, t_max_y, t_max_min;
 	float t_dx, t_dy;
 };
 
@@ -108,7 +92,9 @@ private:
 	int m_size;
 	std::vector<QuadElement> m_elements;
 
-	void printStack(const std::vector<QuadContext>& stack) const;
+	sf::Font m_font;
+
+	void printStack(const std::list<QuadContext>& stack) const;
 
 	std::vector<QuadContext> getCurrentContext(int x, int y) const;
 	QuadContext updateContext(int x, int y, QuadContext& current_context);

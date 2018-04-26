@@ -9,12 +9,12 @@ int main()
 	sf::RenderWindow window(sf::VideoMode(win_width, win_height), "QR");
 
 	FlatQuadTree qt;
-	qt.addElement(20, 50);
+	//qt.addElement(615, 50);
 
 	bool mouseButtonPressed = false;
 
 	glm::vec2 start_point(20.0f, 100.0f);
-	glm::vec2 end_point(400.0f, 250.0f);
+	glm::vec2 end_point(3*400.0f, 3*200.0f);
 
 	std::vector<HitPoint2D> hit_points;
 	glm::vec2 ray = glm::normalize(end_point - start_point);
@@ -60,9 +60,13 @@ int main()
 
 		sf::RectangleShape hit_marker(sf::Vector2f(7.0f, 7.0f));
 		hit_marker.setOrigin(3.0f, 3.0f);
-		hit_marker.setFillColor(sf::Color::Red);
 		for (HitPoint2D& pt : hit_points)
 		{
+			if (pt.hit)
+				hit_marker.setFillColor(sf::Color::Red);
+			else
+				hit_marker.setFillColor(sf::Color::Cyan);
+
 			hit_marker.setPosition(pt.coords.x, pt.coords.y);
 			window.draw(hit_marker);
 		}
