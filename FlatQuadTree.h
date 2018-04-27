@@ -83,7 +83,7 @@ struct QuadContext
 		t_max_min = 0;
 
 		// Compute the value of t for first intersection in x and y
-		std::cout << "Computing t_max, t_dx: " << t_dx << " t_dy: " << t_dy << " inv_ray_x " << inv_ray_x << " inv_ray_y " << inv_ray_y << std::endl;
+		//std::cout << "Computing t_max, t_dx: " << t_dx << " t_dy: " << t_dy << " inv_ray_x " << inv_ray_x << " inv_ray_y " << inv_ray_y << std::endl;
 		t_max_x = ((dir_x + sub_x_coord)*scale - x) * inv_ray_x;
 		t_max_y = ((dir_y + sub_y_coord)*scale - y) * inv_ray_y;
 	}
