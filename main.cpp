@@ -9,20 +9,44 @@ int main()
 	sf::RenderWindow window(sf::VideoMode(win_width, win_height), "QR");
 
 	FlatQuadTree qt;
-	//qt.addElement(615, 50);
+	/*for (int x(0); x < 1024; ++x)
+	{
+		for (int y(0); y < 1024; ++y)
+		{
+			if (y < 304 || y > 310)
+				qt.addElement(x, y);
+		}
+	}*/
 
 	bool mouseButtonPressed = false;
 
-	glm::vec2 start_point(20.0f, 100.0f);
-	glm::vec2 end_point(3*400.0f, 3*200.0f);
+	bool first_point_set = false;
+
+	glm::vec2 start_point(0, 0);
+	glm::vec2 end_point(0, 0);
 
 	std::vector<HitPoint2D> hit_points;
-	glm::vec2 ray = glm::normalize(end_point - start_point);
 
 	while (window.isOpen())
 	{
 		sf::Vector2i local_position = sf::Mouse::getPosition(window);
 		glm::vec2 mouse_position(local_position.x, local_position.y);
+
+		glm::vec2 ray;
+		if (first_point_set)
+		{
+			//sf::Mouse::setPosition(sf::Vector2i(start_point.x + 2, start_point.y + 2), window);
+			end_point.x = local_position.x;
+			end_point.y = local_position.y;
+
+			ray = end_point - start_point;
+
+			if (glm::length(ray) > 50.0f && std::abs(ray.x)>0.01 && std::abs(ray.y)>0.01)
+			{
+				ray = glm::normalize(ray);
+				hit_points = qt.castRay(start_point, ray);
+			}
+		}
 
 		sf::Event event;
 		while (window.pollEvent(event))
@@ -36,11 +60,26 @@ int main()
 				if (event.mouseButton.button == sf::Mouse::Right)
 				{
 					mouseButtonPressed = false;
-					qt.addElement(local_position.x, local_position.y);
-					//qt.print();
+					
+					if (!first_point_set)
+					{
+						start_point.x = local_position.x;
+						start_point.y = local_position.y;
 
-					hit_points = qt.castRay(start_point, ray);
-					std::cout << "Hit points found: " << hit_points.size() << std::endl;
+						first_point_set = true;
+					}
+					else
+					{
+						first_point_set = false;
+						end_point.x = local_position.x;
+						end_point.y = local_position.y;
+
+						ray = glm::normalize(end_point - start_point);
+						hit_points = qt.castRay(start_point, ray);
+						
+						std::cout << "Hit points found: " << hit_points.size() << std::endl;
+					}
+
 				}
 				else
 				{

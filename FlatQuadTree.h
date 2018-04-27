@@ -3,6 +3,7 @@
 #include <list>
 #include <array>
 #include <vector>
+#include <iostream>
 #include <glm/glm.hpp>
 #include <SFML/Graphics.hpp>
 
@@ -59,14 +60,40 @@ struct QuadContext
 		current_y(py)
 	{}
 
+	void initialize(int dir_x, int dir_y, int t_delta_x, int t_delta_y, float inv_ray_x, float inv_ray_y)
+	{
+		// Absolute hit's X and Y -> this init is just usefull for first context ( coord == abs_coord )
+		abs_x = x;
+		abs_y = y;
+
+		current_x = x;
+		current_y = y;
+
+		// Compute sub_index
+		int sub_x_coord = x / (scale+1);
+		int sub_y_coord = y / (scale+1);
+		sub_index = sub_x_coord + 2 * sub_y_coord;
+
+		// Compute how much (in units of t) we can move along the ray
+		// before reaching the cell's width and height
+		t_dx = t_delta_x;
+		t_dy = t_delta_y;
+
+		// Compute the value of t for first intersection in x and y
+		t_max_min = 0;
+
+		// Compute the value of t for first intersection in x and y
+		std::cout << "Computing t_max, t_dx: " << t_dx << " t_dy: " << t_dy << " inv_ray_x " << inv_ray_x << " inv_ray_y " << inv_ray_y << std::endl;
+		t_max_x = ((dir_x + sub_x_coord)*scale - x) * inv_ray_x;
+		t_max_y = ((dir_y + sub_y_coord)*scale - y) * inv_ray_y;
+	}
+
 	int getCurrentSub(int px, int py)
 	{
-		// We could use euclidean division like: sub_index = px/scale + 2*py/scale
 		return px/scale + 2*(py/scale);
 	}
 	
 	bool advance;
-	int parent_index;
 	int index;
 	int scale;
 	int sub_index;
@@ -98,9 +125,6 @@ private:
 	sf::Font m_font;
 
 	void printStack(const std::list<QuadContext>& stack) const;
-
-	std::vector<QuadContext> getCurrentContext(int x, int y) const;
-	QuadContext updateContext(int x, int y, QuadContext& current_context);
 
 	void print_element(int index, const std::string& indent) const;
 	void draw_element(sf::RenderTarget* render_target, int index, float x_start, float y_start, float size) const;
