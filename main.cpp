@@ -18,19 +18,20 @@ int main()
 		}
 	}*/
 
-	for (int i(10000); i--;)
-		qt.addElement(rand() % 1024, rand() % 1024);
+	for (int i(10); i--;)
+		qt.addElement(4*(rand() % 64), 4*(rand() % 64));
+
+	for (int i(1000); i--;)
+		qt.addElement(4 * (256 - 64 + rand() % 64), 4 * (256 - 64 + rand() % 64));
 
 	bool mouseButtonPressed = false;
 
-	bool first_point_set = false;
+	bool first_point_set = true;
 
-	glm::vec2 start_point(0, 0);
+	glm::vec2 start_point(10, 10);
 	glm::vec2 end_point(0, 0);
 
-	std::vector<HitPoint2D> hit_points;
-
-	//std::cout << (1 + (1 << 1)) << std::endl;
+	HitPoint2D hit_point;
 
 	while (window.isOpen())
 	{
@@ -49,7 +50,7 @@ int main()
 			if (glm::length(ray) > 50.0f && std::abs(ray.x)>0.01 && std::abs(ray.y)>0.01)
 			{
 				ray = glm::normalize(ray);
-				hit_points = qt.castRay(start_point, ray);
+				hit_point = qt.castRay(start_point, ray);
 			}
 		}
 
@@ -80,11 +81,8 @@ int main()
 						end_point.y = local_position.y;
 
 						ray = glm::normalize(end_point - start_point);
-						hit_points = qt.castRay(start_point, ray);
-						
-						std::cout << "Hit points found: " << hit_points.size() << std::endl;
+						hit_point = qt.castRay(start_point, ray);
 					}
-
 				}
 				else
 				{
@@ -115,14 +113,11 @@ int main()
 
 		sf::RectangleShape hit_marker(sf::Vector2f(7.0f, 7.0f));
 		hit_marker.setOrigin(3.0f, 3.0f);
-		for (HitPoint2D& pt : hit_points)
+		if (hit_point.hit)
 		{
-			if (pt.hit)
-				hit_marker.setFillColor(sf::Color::Red);
-			else
-				hit_marker.setFillColor(sf::Color::Cyan);
+			hit_marker.setFillColor(sf::Color::Red);
 
-			hit_marker.setPosition(pt.coords.x, pt.coords.y);
+			hit_marker.setPosition(hit_point.coords.x, hit_point.coords.y);
 			window.draw(hit_marker);
 		}
 		

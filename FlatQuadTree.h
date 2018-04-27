@@ -38,7 +38,7 @@ struct QuadElement
 	// Index of parent
 	int parent;
 	// Indexes of subs
-	std::array<int, 4> subs;
+	int subs[4];
 	// Is it a leaf ?
 	bool is_leaf;
 	// Is it empty ?
@@ -72,7 +72,7 @@ struct QuadContext
 		// Compute sub_index
 		int sub_x_coord = x / (scale+1);
 		int sub_y_coord = y / (scale+1);
-		sub_index = sub_x_coord + 2 * sub_y_coord;
+		sub_index = sub_x_coord + (sub_y_coord<<1);
 
 		// Compute how much (in units of t) we can move along the ray
 		// before reaching the cell's width and height
@@ -113,7 +113,7 @@ public:
 	void print();
 	void draw(sf::RenderTarget* render_target) const;
 
-	std::vector<HitPoint2D> castRay(const glm::vec2& start, const glm::vec2& ray_vector);
+	HitPoint2D castRay(const glm::vec2& start, const glm::vec2& ray_vector);
 
 	void addElement(int x, int y);
 
