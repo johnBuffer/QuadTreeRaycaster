@@ -4,8 +4,8 @@
 #include <list>
 
 FlatQuadTree::FlatQuadTree() :
-	m_size(1024),
-	m_min_size(8)
+	m_size(10),
+	m_min_size(3)
 {
 	m_elements.emplace_back(0);
 
@@ -19,7 +19,7 @@ void FlatQuadTree::print()
 
 void FlatQuadTree::draw(sf::RenderTarget* render_target) const
 {
-	draw_element(render_target, 0, 0, 0, m_size);
+	draw_element(render_target, 0, 0, 0, 1<<m_size);
 }
 
 HitPoint2D FlatQuadTree::castRay(const glm::vec2& start, const glm::vec2& ray_vector)
@@ -44,13 +44,13 @@ HitPoint2D FlatQuadTree::castRay(const glm::vec2& start, const glm::vec2& ray_ve
 	int step_y = ray_vector.y > 0 ? 1 : -1;
 	int dir_x = step_x > 0 ? 1 : 0;
 	int dir_y = step_y > 0 ? 1 : 0;
-	float t_dx = std::abs((m_size>>1) * inv_ray_x);
-	float t_dy = std::abs((m_size>>1) * inv_ray_y);
+	float t_dx = std::abs((1 << (m_size - 1)) * inv_ray_x);
+	float t_dy = std::abs((1 << (m_size - 1)) * inv_ray_y);
 
 	int current_stack_index = 0;
 	QuadContext stack[10];
 	// index, sub_size, start.x, start.y
-	stack[0] = QuadContext(0, m_size/2, 0, start.x, start.y);
+	stack[0] = QuadContext(0, m_size-1, 0, start.x, start.y);
 	stack[0].initialize(dir_x, dir_y, t_dx, t_dy, inv_ray_x, inv_ray_y);
 
 	// Probable condition: hit or stack.is_empty()
@@ -60,7 +60,8 @@ HitPoint2D FlatQuadTree::castRay(const glm::vec2& start, const glm::vec2& ray_ve
 		// Current context (location, index, sub_index, ...)
 		QuadContext& context = stack[current_stack_index];
 		const QuadElement& current_elem = m_elements[context.index];
-		int current_size = context.scale;
+		int current_scale = context.scale;
+		int current_size = 1 << current_scale;
 		int current_x = context.x;
 		int current_y = context.y;
 		int sub_index = context.sub_index;
@@ -122,7 +123,7 @@ HitPoint2D FlatQuadTree::castRay(const glm::vec2& start, const glm::vec2& ray_ve
 				++current_stack_index;
 				int new_index = current_elem.subs[sub_index];
 
-				new(&stack[current_stack_index]) QuadContext(new_index, current_size >> 1, 0, context.current_x, context.current_y);
+				new(&stack[current_stack_index]) QuadContext(new_index, current_scale-1, 0, context.current_x, context.current_y);
 				QuadContext& new_context = stack[current_stack_index];
 
 				// Translating relative coords into sub context
@@ -147,11 +148,11 @@ void FlatQuadTree::addElement(int x, int y)
 {
 	int current_x = x;
 	int current_y = y;
-	int current_size = m_size;
+	int current_size = 1<<m_size;
 
 	int current_index = 0;
 
-	while (current_size >= m_min_size)
+	while (current_size >= (1<<m_min_size))
 	{
 		current_size /= 2;
 
@@ -170,7 +171,6 @@ void FlatQuadTree::addElement(int x, int y)
 			//std::cout << "Creating sub " << sub_index << " for " << current_index << " (ID: " << new_index << ")" << std::endl;
 			m_elements[current_index].subs[sub_index] = new_index;
 			m_elements.emplace_back(new_index);
-			m_elements.back().parent = current_index;
 		}
 
 		QuadElement& elem = m_elements[current_index];

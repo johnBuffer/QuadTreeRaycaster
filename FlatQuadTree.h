@@ -35,8 +35,6 @@ struct QuadElement
 
 	// Current index in vector
 	int index;
-	// Index of parent
-	int parent;
 	// Indexes of subs
 	int subs[4];
 	// Is it a leaf ?
@@ -69,9 +67,11 @@ struct QuadContext
 		current_x = x;
 		current_y = y;
 
+		int real_size = 1 << scale;
+
 		// Compute sub_index
-		int sub_x_coord = x / (scale+1);
-		int sub_y_coord = y / (scale+1);
+		int sub_x_coord = x / (real_size +1);
+		int sub_y_coord = y / (real_size +1);
 		sub_index = sub_x_coord + (sub_y_coord<<1);
 
 		// Compute how much (in units of t) we can move along the ray
@@ -84,8 +84,8 @@ struct QuadContext
 
 		// Compute the value of t for first intersection in x and y
 		//std::cout << "Computing t_max, t_dx: " << t_dx << " t_dy: " << t_dy << " inv_ray_x " << inv_ray_x << " inv_ray_y " << inv_ray_y << std::endl;
-		t_max_x = ((dir_x + sub_x_coord)*scale - x) * inv_ray_x;
-		t_max_y = ((dir_y + sub_y_coord)*scale - y) * inv_ray_y;
+		t_max_x = (((dir_x + sub_x_coord)<<scale) - x) * inv_ray_x;
+		t_max_y = (((dir_y + sub_y_coord)<<scale) - y) * inv_ray_y;
 	}
 
 	int getCurrentSub(int px, int py)
