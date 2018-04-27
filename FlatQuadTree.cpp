@@ -5,7 +5,7 @@
 
 FlatQuadTree::FlatQuadTree() :
 	m_size(1024),
-	m_min_size(2)
+	m_min_size(8)
 {
 	m_elements.emplace_back(0);
 
@@ -46,7 +46,8 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 	float t_dx = std::abs(m_size / 2 * inv_ray_x);
 	float t_dy = std::abs(m_size / 2 * inv_ray_y);
 
-	std::list<QuadContext> stack(0);
+	std::vector<QuadContext> stack;
+	stack.reserve(32);
 	// index, sub_size, start.x, start.y
 	stack.emplace_back(0, m_size/2, 0, start.x, start.y);
 	stack.back().initialize(dir_x, dir_y, t_dx, t_dy, inv_ray_x, inv_ray_y);
@@ -59,19 +60,18 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 		// Current context (location, index, sub_index, ...)
 		QuadContext& context = stack.back();
 		const QuadElement& current_elem = m_elements[context.index];
+		int current_size = context.scale;
 		int current_x = context.x;
 		int current_y = context.y;
 		int sub_index = context.sub_index;
-		int current_size = context.scale;
+		int sub_y_coord = sub_index>>1;
+		int sub_x_coord = sub_index - (sub_y_coord<<1);
 
 		//std::cout << "In " << context.index << std::endl;
 		// If current sub empty -> move to next one
 		if (current_elem.subs[sub_index] == -1 || context.advance)
 		{
 			if (context.advance) { context.advance = false; }
-			
-			int sub_y_coord = context.sub_index / 2;
-			int sub_x_coord = context.sub_index - 2*sub_y_coord;
 
 			context.t_max_min = 0;
 			if (context.t_max_x < context.t_max_y)
@@ -93,15 +93,15 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 			//std::cout << "Hit, new rel coords: " << context.x + context.t_max_min*ray_vector.x << " " << context.y + context.t_max_min*ray_vector.y << std::endl;
 			//std::cout << "New t_max coords: " << context.t_max_x << " " << context.t_max_y << std::endl;
 
-			float hit_abs_x = context.abs_x + context.t_max_min*ray_vector.x;
+			/*float hit_abs_x = context.abs_x + context.t_max_min*ray_vector.x;
 			float hit_abs_y = context.abs_y + context.t_max_min*ray_vector.y;
 
 			//std::cout << "Hit, new abs coords: " << hit_abs_x << " " << hit_abs_y << std::endl;
-			result.emplace_back(hit_abs_x, hit_abs_y, false);
+			result.emplace_back(hit_abs_x, hit_abs_y, false);*/
 
 			if (sub_x_coord > -1 && sub_x_coord < 2 && sub_y_coord > -1 && sub_y_coord < 2)
 			{
-				context.sub_index = sub_x_coord + 2*sub_y_coord;
+				context.sub_index = sub_x_coord + (sub_y_coord<<1);
 			}
 			else
 			{
@@ -131,15 +131,13 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 				//std::cout << "Sub " << context.sub_index << " in " << context.index << " has sub, entering " << current_elem.subs[sub_index] << std::endl;
 				// Adding sub context to the stack
 				int new_index = current_elem.subs[sub_index];
-				int current_sub_y_coord = sub_index / 2;
-				int current_sub_x_coord = sub_index - 2 * current_sub_y_coord;
 
-				stack.emplace_back(new_index, current_size/2, 0, context.current_x, context.current_y);
-				QuadContext& new_context = stack.back();
+				//stack.emplace_back(new_index, current_size>>1, 0, context.current_x, context.current_y);
+				QuadContext new_context(new_index, current_size >> 1, 0, context.current_x, context.current_y);// = stack.back();
 
 				// Translating relative coords into sub context
-				new_context.x -= current_sub_x_coord * current_size;
-				new_context.y -= current_sub_y_coord * current_size;
+				new_context.x -= sub_x_coord * current_size;
+				new_context.y -= sub_y_coord * current_size;
 
 				//std::cout << "Rel coords: " << new_context.x << " " << new_context.y << " sub coords (" << current_sub_x_coord << ", " << current_sub_y_coord << ")" << std::endl;
 
@@ -151,6 +149,7 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 				//std::cout << "Abs coords: " << new_context.abs_x << " " << new_context.abs_y << std::endl;
 				//std::cout << "T_max: " << new_context.t_max_x << " " << new_context.t_max_y << std::endl;
 				//std::cout << "New sub: " << new_context.sub_index << " scale: " << new_context.scale << std::endl;
+				stack.emplace_back(new_context);
 			}
 		}
 
@@ -204,7 +203,7 @@ void FlatQuadTree::addElement(int x, int y)
 
 	//std::cout << std::endl;
 
-	std::cout << "\n===================== ADD =====================" << std::endl;
+	//std::cout << "\n===================== ADD =====================" << std::endl;
 
 	// Debug
 	/*std::cout << "Done, new size: " << m_elements.size() << std::endl;
@@ -213,7 +212,7 @@ void FlatQuadTree::addElement(int x, int y)
 	std::cout << "Spaced used: " << int(space_used * 100) << "%" << std::endl;*/
 }
 
-void FlatQuadTree::printStack(const std::list<QuadContext>& stack) const
+void FlatQuadTree::printStack(const std::vector<QuadContext>& stack) const
 {
 	for (const QuadContext& qc : stack)
 	{

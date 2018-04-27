@@ -3,8 +3,8 @@
 
 int main()
 {
-	int win_width = 512*2;
-	int win_height = 512*2;
+	int win_width = 512 * 2;
+	int win_height = 512 * 2;
 
 	sf::RenderWindow window(sf::VideoMode(win_width, win_height), "QR");
 
@@ -18,6 +18,9 @@ int main()
 		}
 	}*/
 
+	for (int i(10000); i--;)
+		qt.addElement(rand() % 1024, rand() % 1024);
+
 	bool mouseButtonPressed = false;
 
 	bool first_point_set = false;
@@ -26,6 +29,8 @@ int main()
 	glm::vec2 end_point(0, 0);
 
 	std::vector<HitPoint2D> hit_points;
+
+	//std::cout << (1 + (1 << 1)) << std::endl;
 
 	while (window.isOpen())
 	{

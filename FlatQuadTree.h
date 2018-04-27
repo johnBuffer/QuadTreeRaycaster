@@ -124,7 +124,7 @@ private:
 
 	sf::Font m_font;
 
-	void printStack(const std::list<QuadContext>& stack) const;
+	void printStack(const std::vector<QuadContext>& stack) const;
 
 	void print_element(int index, const std::string& indent) const;
 	void draw_element(sf::RenderTarget* render_target, int index, float x_start, float y_start, float size) const;
