@@ -160,10 +160,8 @@ void FlatQuadTree::addElement(int x, int y)
 		int sub_y = current_y / current_size;
 		int sub_index = sub_x + 2*sub_y;
 
-		if (sub_x > 0)
-			current_x -= current_size;
-		if (sub_y > 0)
-			current_y -= current_size;
+		current_x -= current_size * sub_x;
+		current_y -= current_size * sub_y;
 
 		if (m_elements[current_index].subs[sub_index] == -1)
 		{

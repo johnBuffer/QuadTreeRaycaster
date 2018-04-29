@@ -22,7 +22,7 @@ struct HitPoint2D
 // One of the FlatQuadTree element
 struct QuadElement
 {
-	QuadElement() : parent(-1), is_leaf(true), is_empty(true)
+	QuadElement() : is_leaf(true), is_empty(true)
 	{
 		for (int i(0); i<4; ++i)
 			subs[i] = -1;
