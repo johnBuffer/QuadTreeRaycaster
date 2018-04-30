@@ -22,11 +22,11 @@ int main()
 		}
 	}*/
 
-	/*for (int i(10); i--;)
+	for (int i(10); i--;)
 		qt.addElement(4*(rand() % 64), 4*(rand() % 64));
 
 	for (int i(1000); i--;)
-		qt.addElement(4 * (256 - 64 + rand() % 64), 4 * (256 - 64 + rand() % 64));*/
+		qt.addElement(4 * (256 - 64 + rand() % 64), 4 * (256 - 64 + rand() % 64));
 
 	bool mouseButtonPressed = false;
 
@@ -54,7 +54,7 @@ int main()
 			if (glm::length(ray) > 50.0f && std::abs(ray.x)>0.01 && std::abs(ray.y)>0.01)
 			{
 				ray = glm::normalize(ray);
-				//hit_point = qt.castRay(start_point, ray);
+				hit_point = qt.castRay(start_point, ray);
 			}
 		}
 
@@ -104,18 +104,18 @@ int main()
 			qt.addElement(local_position.x, local_position.y);
 		}
 
-		/*sf::VertexArray ray_va(sf::Lines, 2);
+		sf::VertexArray ray_va(sf::Lines, 2);
 		ray_va[0].color = sf::Color::Green;
 		ray_va[1].color = sf::Color::Green;
 		ray_va[0].position = sf::Vector2f(start_point.x, start_point.y);
-		ray_va[1].position = sf::Vector2f(end_point.x, end_point.y);*/
+		ray_va[1].position = sf::Vector2f(end_point.x, end_point.y);
 
 		window.clear();
 
-		//window.draw(ray_va);
+		window.draw(ray_va);
 		qt.draw(&window);
 
-		/*sf::RectangleShape hit_marker(sf::Vector2f(7.0f, 7.0f));
+		sf::RectangleShape hit_marker(sf::Vector2f(7.0f, 7.0f));
 		hit_marker.setOrigin(3.0f, 3.0f);
 		if (hit_point.hit)
 		{
@@ -123,7 +123,7 @@ int main()
 
 			hit_marker.setPosition(hit_point.coords.x, hit_point.coords.y);
 			window.draw(hit_marker);
-		}*/
+		}
 		
 		window.display();
 	}

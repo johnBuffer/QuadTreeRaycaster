@@ -7,7 +7,7 @@
 
 FlatQuadTree::FlatQuadTree() :
 	m_size(10),
-	m_min_size(5)
+	m_min_size(3)
 {
 	m_elements.emplace_back(0);
 	int new_index = m_elements.size();
@@ -60,7 +60,7 @@ HitPoint2D FlatQuadTree::castRay(const glm::vec2& start, const glm::vec2& ray_ve
 	stack[0].initialize(dir_x, dir_y, t_dx, t_dy, inv_ray_x, inv_ray_y);
 
 	// Probable condition: hit or stack.is_empty()
-	/*while (true)
+	while (true)
 	{
 		++iter_counter;
 		// Current context (location, index, sub_index, ...)
@@ -74,10 +74,21 @@ HitPoint2D FlatQuadTree::castRay(const glm::vec2& start, const glm::vec2& ray_ve
 		int sub_y_coord = sub_index>>1;
 		int sub_x_coord = sub_index - (sub_y_coord<<1);
 
+		unsigned short current_mask = current_elem.subs_mask << sub_index;
+		//std::cout << "Bitmask of " << current_elem.index << " " << std::bitset<16>(current_elem.subs_mask) << std::endl;
+		//std::cout << "After shift " << std::bitset<16>(current_mask) << std::endl;
+
 		// If current sub empty -> move to next one
-		if (current_elem.subs[sub_index] == -1 || context.advance)
+		if (!(current_mask & 0x8000) || context.advance)
 		{
-			if (context.advance) { context.advance = false; }
+			if (context.advance) 
+			{
+				context.advance = false; 
+			}
+			else
+			{
+				//std::cout << "Sub " << sub_index << " is empty, skipping..." << std::endl;
+			}
 
 			context.t_max_min = 0;
 			if (context.t_max_x < context.t_max_y)
@@ -112,9 +123,11 @@ HitPoint2D FlatQuadTree::castRay(const glm::vec2& start, const glm::vec2& ray_ve
 		// If not, go deeper
 		else
 		{
-			const QuadElement& sub_element = m_elements[current_elem.subs[sub_index]];
-			if (sub_element.is_leaf && !sub_element.is_empty)
+			const QuadElement& sub_element = m_elements[current_elem.subs+sub_index];
+			//std::cout << "Leaf shift " << std::bitset<16>(current_mask & 0x80) << std::endl;
+			if (current_mask & 0x80)
 			{
+				//std::cout << "Hit found in " << sub_element.index << std::endl;
 				int hit_abs_x = context.abs_x + context.t_max_min*ray_vector.x;
 				int hit_abs_y = context.abs_y + context.t_max_min*ray_vector.y;
 
@@ -125,9 +138,10 @@ HitPoint2D FlatQuadTree::castRay(const glm::vec2& start, const glm::vec2& ray_ve
 			}
 			else
 			{
+				//std::cout << current_elem.index << " has a sub at " << sub_index << std::endl;
 				// Adding sub context to the stack
 				++current_stack_index;
-				int new_index = current_elem.subs[sub_index];
+				int new_index = current_elem.subs + sub_index;
 
 				new(&stack[current_stack_index]) QuadContext(new_index, current_scale-1, 0, context.current_x, context.current_y);
 				QuadContext& new_context = stack[current_stack_index];
@@ -142,7 +156,9 @@ HitPoint2D FlatQuadTree::castRay(const glm::vec2& start, const glm::vec2& ray_ve
 				new_context.abs_y = context.abs_y + context.t_max_min*ray_vector.y;
 			}
 		}
-	}*/
+
+		//std::cout << std::endl;
+	}
 
 	float cast_time = clock.getElapsedTime().asMicroseconds();
 	std::cout << "Iteration count: " << iter_counter << " in " << cast_time << "us" << std::endl;
@@ -194,12 +210,6 @@ void FlatQuadTree::addElement(int x, int y)
 			{
 				QuadElement& last_element = m_elements[last_index];
 				last_element.subs_mask &= ~(0x80 >> last_sub);
-
-				if (!last_index)
-				{
-					std::cout << "Root's leaf mask " << std::bitset<16>(~(0x80 >> last_sub)) << " " << last_sub << std::endl;
-					//std::cout << "Root's mask " << std::bitset<16>(last_element.subs_mask) << std::endl;
-				}
 			}
 
 			// Allocate new subs
@@ -286,7 +296,7 @@ void FlatQuadTree::draw_element(sf::RenderTarget* render_target, int index, floa
 	va[2].position = sf::Vector2f(x_start       , y_start + sub_size);
 	va[3].position = sf::Vector2f(x_start + size, y_start + sub_size);
 
-	render_target->draw(va);
+	//render_target->draw(va);
 
 	for (int x(0); x < 2; ++x)
 	{
