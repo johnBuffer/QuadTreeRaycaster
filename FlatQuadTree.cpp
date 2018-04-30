@@ -2,12 +2,18 @@
 #include <iostream>
 #include <sstream>
 #include <list>
+#include <bitset>
+
 
 FlatQuadTree::FlatQuadTree() :
 	m_size(10),
-	m_min_size(3)
+	m_min_size(5)
 {
 	m_elements.emplace_back(0);
+	int new_index = m_elements.size();
+	m_elements[0].subs = new_index;
+	for (int i(4); i--;)
+		m_elements.emplace_back();
 
 	m_font.loadFromFile("font.ttf");
 }
@@ -54,7 +60,7 @@ HitPoint2D FlatQuadTree::castRay(const glm::vec2& start, const glm::vec2& ray_ve
 	stack[0].initialize(dir_x, dir_y, t_dx, t_dy, inv_ray_x, inv_ray_y);
 
 	// Probable condition: hit or stack.is_empty()
-	while (true)
+	/*while (true)
 	{
 		++iter_counter;
 		// Current context (location, index, sub_index, ...)
@@ -136,7 +142,7 @@ HitPoint2D FlatQuadTree::castRay(const glm::vec2& start, const glm::vec2& ray_ve
 				new_context.abs_y = context.abs_y + context.t_max_min*ray_vector.y;
 			}
 		}
-	}
+	}*/
 
 	float cast_time = clock.getElapsedTime().asMicroseconds();
 	std::cout << "Iteration count: " << iter_counter << " in " << cast_time << "us" << std::endl;
@@ -149,11 +155,15 @@ void FlatQuadTree::addElement(int x, int y)
 	int current_x = x;
 	int current_y = y;
 	int current_size = 1<<m_size;
-
 	int current_index = 0;
+
+	int last_index = -1;
+	int last_sub;
 
 	while (current_size >= (1<<m_min_size))
 	{
+		//std::cout << "Adding in " << current_index << std::endl;
+		QuadElement& current_element = m_elements[current_index];
 		current_size /= 2;
 
 		int sub_x = current_x / current_size;
@@ -163,22 +173,55 @@ void FlatQuadTree::addElement(int x, int y)
 		current_x -= current_size * sub_x;
 		current_y -= current_size * sub_y;
 
-		if (m_elements[current_index].subs[sub_index] == -1)
+		unsigned short current_mask = current_element.subs_mask << (sub_index);
+
+		//std::cout << "Current sub mask " << std::bitset<16>(current_element.subs_mask) << " gives " << std::bitset<16>(current_mask) << " " << sub_index << std::endl;
+		//current_mask <<= sub_index;
+		//std::cout << "Condition mask " << std::bitset<16>(0x8000) << " -> " << std::bitset<16>(current_mask & 0x8000) << std::endl;
+
+		if (!(current_mask & 0x8000))
 		{
+			// Index for new element's subs
 			int new_index = m_elements.size();
 			//std::cout << "Creating sub " << sub_index << " for " << current_index << " (ID: " << new_index << ")" << std::endl;
-			m_elements[current_index].subs[sub_index] = new_index;
-			m_elements.emplace_back(new_index);
+			m_elements[current_element.subs + sub_index].subs = new_index;
+
+			// Update current sub status
+			current_element.subs_mask |= (0x8000 >> sub_index);
+
+			// Update parent's leaf status
+			if (last_index != -1)
+			{
+				QuadElement& last_element = m_elements[last_index];
+				last_element.subs_mask &= ~(0x80 >> last_sub);
+
+				if (!last_index)
+				{
+					std::cout << "Root's leaf mask " << std::bitset<16>(~(0x80 >> last_sub)) << " " << last_sub << std::endl;
+					//std::cout << "Root's mask " << std::bitset<16>(last_element.subs_mask) << std::endl;
+				}
+			}
+
+			// Allocate new subs
+			for (int i(4); i--;)
+			{
+				m_elements.emplace_back();
+			}
+
+			//std::cout << "New tree size " << m_elements.size() << std::endl;
+		}
+		else
+		{
+			//std::cout << "Sub " << sub_index << " already existing in " << current_index << std::endl;
 		}
 
-		QuadElement& elem = m_elements[current_index];
-		elem.is_leaf = false;
-		elem.is_empty = false;
+		last_index = current_index;
+		last_sub = sub_index;
+		
+		current_index = m_elements[current_index].subs + sub_index;
 
-		current_index = elem.subs[sub_index];
+		//std::cout << std::endl;
 	}
-
-	m_elements[current_index].is_empty = false;
 
 	//std::cout << std::endl;
 
@@ -206,19 +249,19 @@ void FlatQuadTree::print_element(int index, const std::string& indent) const
 	std::cout << indent << "ID: " << index << std::endl;
 	for (int i(0); i < 4; ++i)
 	{
-		int sub_idx = elem.subs[i];
-		if (sub_idx != -1)
+		unsigned int current_mask = elem.subs_mask << i;
+
+		if (current_mask & 0x8000)
 		{
-			std::cout << indent << "sub " << i << ": " << sub_idx << std::endl;
-			print_element(sub_idx, indent + "    ");
+			std::cout << indent << "sub " << i << ": " << elem.subs+i << std::endl;
+			print_element(elem.subs + i, indent + "    ");
 		}
 	}
 }
 
 void FlatQuadTree::draw_element(sf::RenderTarget* render_target, int index, float x_start, float y_start, float size) const
 {
-	if (index == -1)
-		return;
+	float sub_size = size / 2.0f;
 
 	sf::Text text;
 	text.setFont(m_font);
@@ -228,43 +271,48 @@ void FlatQuadTree::draw_element(sf::RenderTarget* render_target, int index, floa
 	std::stringstream sx;
 	sx << index;
 	text.setString(sx.str());
-	text.setPosition(x_start + size / 2.0f, y_start + size / 2.0f);
+	text.setPosition(x_start + sub_size, y_start + sub_size);
 
 	const QuadElement& elem = m_elements[index];
-	if (!elem.is_leaf)
-	{
-		sf::VertexArray va(sf::Lines, 4);
-		for (int i(0); i<4; ++i)
-			va[i].color = sf::Color::White;
-
-		float sub_size = size / 2.0f;
 	
-		va[0].position = sf::Vector2f(x_start + sub_size, y_start);
-		va[1].position = sf::Vector2f(x_start + sub_size, y_start + size);
+	sf::VertexArray va(sf::Lines, 4);
+	for (int i(0); i<4; ++i)
+		va[i].color = sf::Color::White;
 
-		va[2].position = sf::Vector2f(x_start       , y_start + sub_size);
-		va[3].position = sf::Vector2f(x_start + size, y_start + sub_size);
+	
+	va[0].position = sf::Vector2f(x_start + sub_size, y_start);
+	va[1].position = sf::Vector2f(x_start + sub_size, y_start + size);
 
-		//render_target->draw(va);
+	va[2].position = sf::Vector2f(x_start       , y_start + sub_size);
+	va[3].position = sf::Vector2f(x_start + size, y_start + sub_size);
 
-		draw_element(render_target, elem.subs[0], x_start, y_start, sub_size);
-		draw_element(render_target, elem.subs[1], x_start + sub_size, y_start, sub_size);
-		draw_element(render_target, elem.subs[2], x_start, y_start + sub_size, sub_size);
-		draw_element(render_target, elem.subs[3], x_start + sub_size, y_start + sub_size, sub_size);
-	}
-	else// if (!elem.is_empty)
+	render_target->draw(va);
+
+	for (int x(0); x < 2; ++x)
 	{
-		sf::VertexArray va(sf::Quads, 4);
-		for (int i(0); i<4; ++i)
-			va[i].color = sf::Color::Green;
+		for (int y(0); y < 2; ++y)
+		{
+			int sub_index = x + 2 * y;
+			if ((elem.subs_mask << sub_index) & 0x8000)
+			{
+				if (!((elem.subs_mask << sub_index) & 0x80))
+					draw_element(render_target, elem.subs+sub_index, x_start+sub_size * x, y_start + sub_size * y, sub_size);
+				else
+				{
+					sf::VertexArray va_leaf(sf::Quads, 4);
+					for (int i(0); i<4; ++i)
+						va_leaf[i].color = sf::Color::Green;
 
-		va[0].position = sf::Vector2f(x_start       , y_start);
-		va[1].position = sf::Vector2f(x_start + size, y_start);
+					va_leaf[0].position = sf::Vector2f(x_start + size / 2 * x, y_start + size / 2 * y);
+					va_leaf[1].position = sf::Vector2f(x_start + size / 2 * (x+1), y_start + size / 2 * y);
 
-		va[2].position = sf::Vector2f(x_start + size, y_start + size);
-		va[3].position = sf::Vector2f(x_start       , y_start + size);
+					va_leaf[2].position = sf::Vector2f(x_start + size / 2 * (x + 1), y_start + size / 2 * (y+1));
+					va_leaf[3].position = sf::Vector2f(x_start + size / 2 * x, y_start + size / 2 * (y+1));
 
-		render_target->draw(va);
+					render_target->draw(va_leaf);
+				}
+			}
+		}
 	}
 
 	//render_target->draw(text);

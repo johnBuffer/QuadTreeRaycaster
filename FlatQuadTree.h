@@ -22,10 +22,11 @@ struct HitPoint2D
 // One of the FlatQuadTree element
 struct QuadElement
 {
-	QuadElement() : is_leaf(true), is_empty(true)
+	QuadElement()
 	{
-		for (int i(0); i<4; ++i)
-			subs[i] = -1;
+		index = 0;
+		subs = -1;
+		subs_mask = 0xFF;
 	}
 
 	QuadElement(int idx) : QuadElement()
@@ -34,13 +35,11 @@ struct QuadElement
 	}
 
 	// Current index in vector
-	int index;
+	short index;
 	// Indexes of subs
-	int subs[4];
+	int subs;
 	// Is it a leaf ?
-	bool is_leaf;
-	// Is it empty ?
-	bool is_empty;
+	unsigned short subs_mask;
 };
 
 struct QuadContext
