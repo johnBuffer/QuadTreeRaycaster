@@ -24,7 +24,6 @@ void FlatQuadTree::draw(sf::RenderTarget* render_target) const
 
 std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm::vec2& ray_vector)
 {
-	//std::cout << "\n========== START ==========" << std::endl;
 	sf::Clock clock;
 	clock.restart();
 	int iter_counter = 0;
@@ -32,9 +31,6 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 
 	if (m_elements.empty())
 		return result;
-
-	// We assume we have a ray vector:
-	// vec = start + t*v
 	
 	// Initialization of global parameters
 	float inv_ray_x = 1 / ray_vector.x;
@@ -53,10 +49,8 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 	stack.back().initialize(dir_x, dir_y, t_dx, t_dy, inv_ray_x, inv_ray_y);
 
 	// Probable condition: hit or stack.is_empty()
-	while (true)
-	{
+	while (true) {
 		++iter_counter;
-		//printStack(stack);
 		// Current context (location, index, sub_index, ...)
 		QuadContext& context = stack.back();
 		const QuadElement& current_elem = m_elements[context.index];
@@ -67,10 +61,7 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 		int sub_y_coord = sub_index>>1;
 		int sub_x_coord = sub_index - (sub_y_coord<<1);
 
-		//std::cout << "In " << context.index << std::endl;
-		// If current sub empty -> move to next one
-		if (current_elem.subs[sub_index] == -1 || context.advance)
-		{
+		if (current_elem.subs[sub_index] == -1 || context.advance) {
 			if (context.advance) { context.advance = false; }
 
 			context.t_max_min = 0;
@@ -88,14 +79,11 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 			context.current_x = context.x + context.t_max_min*ray_vector.x;
 			context.current_y = context.y + context.t_max_min*ray_vector.y;
 
-			if (sub_x_coord > -1 && sub_x_coord < 2 && sub_y_coord > -1 && sub_y_coord < 2)
-			{
+			if (sub_x_coord > -1 && sub_x_coord < 2 && sub_y_coord > -1 && sub_y_coord < 2) {
 				context.sub_index = sub_x_coord + (sub_y_coord<<1);
 			}
-			else
-			{
+			else {
 				stack.pop_back();
-
 				if (stack.empty())
 					break;
 				else
@@ -103,11 +91,9 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 			}
 		}
 		// If not, go deeper
-		else
-		{
+		else {
 			const QuadElement& sub_element = m_elements[current_elem.subs[sub_index]];
-			if (sub_element.is_leaf && !sub_element.is_empty)
-			{
+			if (sub_element.is_leaf && !sub_element.is_empty) {
 				int hit_abs_x = context.abs_x + context.t_max_min*ray_vector.x;
 				int hit_abs_y = context.abs_y + context.t_max_min*ray_vector.y;
 
@@ -115,19 +101,11 @@ std::vector<HitPoint2D> FlatQuadTree::castRay(const glm::vec2& start, const glm:
 				break;
 			}
 			else {
-				//std::cout << "Sub " << context.sub_index << " in " << context.index << " has sub, entering " << current_elem.subs[sub_index] << std::endl;
-				// Adding sub context to the stack
 				int new_index = current_elem.subs[sub_index];
-
-				//stack.emplace_back(new_index, current_size>>1, 0, context.current_x, context.current_y);
-				QuadContext new_context(new_index, current_size >> 1, 0, context.current_x, context.current_y);// = stack.back();
-
+				QuadContext new_context(new_index, current_size >> 1, 0, context.current_x, context.current_y);
 				// Translating relative coords into sub context
 				new_context.x -= sub_x_coord * current_size;
 				new_context.y -= sub_y_coord * current_size;
-
-				//std::cout << "Rel coords: " << new_context.x << " " << new_context.y << " sub coords (" << current_sub_x_coord << ", " << current_sub_y_coord << ")" << std::endl;
-
 				// Initializing sub raycast 
 				new_context.initialize(dir_x, dir_y, context.t_dx * 0.5f, context.t_dy * 0.5f, inv_ray_x, inv_ray_y);
 				new_context.abs_x = context.abs_x + context.t_max_min*ray_vector.x;
@@ -167,7 +145,6 @@ void FlatQuadTree::addElement(int x, int y)
 		if (m_elements[current_index].subs[sub_index] == -1)
 		{
 			int new_index = m_elements.size();
-			//std::cout << "Creating sub " << sub_index << " for " << current_index << " (ID: " << new_index << ")" << std::endl;
 			m_elements[current_index].subs[sub_index] = new_index;
 			m_elements.emplace_back(new_index);
 			m_elements.back().parent = current_index;
